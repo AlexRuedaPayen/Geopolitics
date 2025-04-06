@@ -1,0 +1,8 @@
+README.md
+setup.py
+Geopolitics.egg-info/PKG-INFO
+Geopolitics.egg-info/SOURCES.txt
+Geopolitics.egg-info/dependency_links.txt
+Geopolitics.egg-info/entry_points.txt
+Geopolitics.egg-info/requires.txt
+Geopolitics.egg-info/top_level.txt

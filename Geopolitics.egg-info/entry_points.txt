@@ -1,0 +1,2 @@
+[console_scripts]
+run-dashboard = scripts.dashboard:app.run_server
