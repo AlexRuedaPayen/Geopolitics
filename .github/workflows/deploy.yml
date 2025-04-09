@@ -24,7 +24,7 @@ jobs:
                     cd /home/axan || exit 1
 
                     if [ ! -d "Geopolitics" ]; then
-                        git clone git@github.com:your-username/Geopolitics.git
+                        git clone git@github.com:AlexRuedaPayen/Geopolitics.git
                     else
                         cd Geopolitics && git pull
                     fi
