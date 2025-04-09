@@ -21,9 +21,17 @@ jobs:
                 key: ${{ secrets.VPS_SSH_KEY  }}
                 port: ${{ secrets.VPS_PORT }}
                 script: |
-                    cd /home/axan/Geopolitics || git clone git@github.com:AlexRuedaPayen/Geopolitics.git /home/axan/Geopolitics
-                    cd /home/axan/Geopolitics
-                    git pull origin main
+                    cd /home/axan || exit 1
 
-                    /usr/bin/python3 setup_environment.py
-                    systemctl --user restart geopolitics-dashboard.service
+                    if [ ! -d "Geopolitics" ]; then
+                        git clone git@github.com:your-username/Geopolitics.git
+                    else
+                        cd Geopolitics && git pull
+                    fi
+
+                    cd /home/axan/Geopolitics
+
+                    /home/axan/Geopolitics/venv/bin/python setup_environment.py
+
+                    sudo systemctl restart geopolitics-dashboard.service
+                     
