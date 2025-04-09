@@ -33,5 +33,5 @@ jobs:
 
                     /home/axan/Geopolitics/venv/bin/python setup_environment.py
 
-                    sudo systemctl restart geopolitics-dashboard.service
+                    systemctl restart geopolitics-dashboard.service
                      
