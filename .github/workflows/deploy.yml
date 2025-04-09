@@ -21,5 +21,9 @@ jobs:
                 key: ${{ secrets.VPS_SSH_KEY  }}
                 port: ${{ secrets.VPS_PORT }}
                 script: |
-                    echo "Connected successfully"
-                     
+                    if [ ! -d "/home/your_user/Geopolitics" ]; then
+                        git clone git@github.com:your_username/Geopolitics.git /home/your_user/Geopolitics
+                    else
+                        cd /home/your_user/Geopolitics && git pull
+                    fi
+                                        
