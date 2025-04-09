@@ -18,7 +18,7 @@ jobs:
               with:
                 host: ${{ secrets.VPS_HOST }}
                 username: ${{ secrets.VPS_USER }}
-                key: ${{ secrets.VPS_SSH_KEY  }}
+                key: ${{ secrets.VPS_KEY  }}
                 port: ${{ secrets.VPS_PORT }}
                 script: |
                     cd /home/axan/Geopolitics || git clone git@github.com:AlexRuedaPayen/Geopolitics.git /home/axan/Geopolitics
@@ -26,6 +26,4 @@ jobs:
                     git pull origin main
 
                     /usr/bin/python3 setup_environment.py
-
-                    # Optional: restart service if you're running the dashboard persistently
                     systemctl --user restart geopolitics-dashboard.service
