@@ -26,7 +26,6 @@ def create_virtualenv():
         print("Virtual environment already exists.")
 
     # Ensure pip is installed and up-to-date
-    subprocess.check_call([sys.executable, "-m", "ensurepip", "--upgrade"])
     pip_executable = get_pip_executable()
     subprocess.check_call([sys.executable, pip_executable, "install", "--upgrade", "pip"])
 
