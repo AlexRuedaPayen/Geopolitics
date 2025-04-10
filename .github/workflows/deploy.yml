@@ -7,53 +7,47 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest  # GitHub Actions runner
+    runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout code (on GitHub Actions runner)
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Deploy to VPS via SSH (this step is executed on the GitHub Actions runner)
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.VPS_HOST }}  # VPS hostname or IP
-          username: ${{ secrets.VPS_USER }}  # VPS username
-          key: ${{ secrets.VPS_SSH_KEY }}  # Private key (used to authenticate to the VPS)
-          port: ${{ secrets.VPS_PORT }}  # VPS SSH port
-          script: |
-            # --------------------------
-            # This section will run **on the VPS**, not on GitHub Actions runner
-            # --------------------------
-            # --------------------------
-            # Step 2: This section runs on **VPS** after SSH connection is established
-            # --------------------------
-
-            # Create the .ssh directory if it doesn't exist
+      - name: Set up SSH keys
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+            # Set up SSH keys and configure for GitHub access on VPS
             mkdir -p ~/.ssh
+            echo "$VPS_SSH_KEY" > ~/.ssh/github_deploy_key
+            chmod 600 ~/.ssh/github_deploy_key
 
-            # Echo the private key into the file and set correct permissions
-            echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/github_deploy_key
-            chmod 600 ~/.ssh/github_deploy_key  # Ensure the private key has correct permissions
-
-            # Configure SSH to use this private key when connecting to GitHub
+            # Set up SSH config
             echo "Host github.com
-                IdentityFile ~/.ssh/github_deploy_key
-                StrictHostKeyChecking no" >> ~/.ssh/config
+                    IdentityFile ~/.ssh/github_deploy_key
+                    StrictHostKeyChecking no" >> ~/.ssh/config
             chmod 600 ~/.ssh/config
-            # 1. Check if the 'Geopolitics' directory exists on the VPS
-            if [ ! -d "/home/${{ secrets.VPS_USER }}/Geopolitics" ]; then
-                # If the directory does not exist, clone the repo from GitHub
-                git clone git@github.com:AlexRuedaPayen/Geopolitics.git /home/${{ secrets.VPS_USER }}/Geopolitics
+
+      - name: Deploy over SSH to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          # SSH into VPS and deploy
+          ssh -p $VPS_PORT $VPS_USER@$VPS_HOST << 'EOF'
+            # Ensure the directory exists, otherwise clone the repo
+            if [ ! -d "/home/$VPS_USER/Geopolitics" ]; then
+                git clone git@github.com:AlexRuedaPayensername/Geopolitics.git /home/$VPS_USER/Geopolitics
             else
-                # If the directory exists, pull the latest changes from GitHub
-                cd /home/${{ secrets.VPS_USER }}/Geopolitics && git pull
+                cd /home/$VPS_USER/Geopolitics && git pull
             fi
 
-            # 2. Run the setup environment script to set up the Python environment
-            python3 /home/${{ secrets.VPS_USER }}/Geopolitics/setup_environment.py
+            # Set up virtual environment and dependencies
+            cd /home/$VPS_USER/Geopolitics
+            python3 setup_environment.py
 
-            # 3. Restart the systemd service for the project
+            # Restart the service
             sudo systemctl restart geopolitics-dashboard.service
-
+          EOF
