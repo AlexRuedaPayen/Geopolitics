@@ -3,67 +3,46 @@ name: Deploy to VPS
 on:
   push:
     branches:
-      - main  # Trigger workflow on push to main branch
+      - main  # Change to your main branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout code from the repository
       - name: Checkout code
         uses: actions/checkout@v3
         
-      # Add SSH private key to the SSH agent for authentication
       - name: Add SSH private key to agent
         uses: webfactory/ssh-agent@v0.5.3
         with:
-          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}  # Ensure this secret contains the new private key
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}  # Ensure this secret contains the SSH private key for your VPS
 
-      # Deploy to the server and troubleshoot using echo statements
       - name: Deploy to Server
         env:
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}       # The SSH username for your VPS
+          VPS_HOST: ${{ secrets.VPS_HOST }}       # The public IP address or hostname of your VPS
+          VPS_PORT: ${{ secrets.VPS_PORT }}       # The custom SSH port you're using for your VPS
         run: |
-          echo "Starting deployment process..."
-
-          # Check the value of VPS_HOST for debugging
-          echo "VPS_HOST is: $VPS_HOST"
-          
-          # Ping VPS to test connectivity
-          echo "Pinging VPS Host ($VPS_HOST) to test connectivity..."
-          ping -c 4 $VPS_HOST
-          
-          # Add the VPS host key to known hosts to avoid verification failure
+          # Add the VPS host key to known hosts to avoid "Host key verification failed" errors
           mkdir -p ~/.ssh
-          echo "Creating ~/.ssh directory..."
-          ls -la ~/.ssh  # List the contents of ~/.ssh to check permissions
-          
-          echo "Adding VPS host key to known_hosts..."
-          ssh-keyscan -p $VPS_PORT -H $VPS_HOST >> ~/.ssh/known_hosts
-          cat ~/.ssh/known_hosts  # Display the contents of the known_hosts file for debugging
+          ssh-keyscan -H $VPS_HOST -p $VPS_PORT >> ~/.ssh/known_hosts  # Ensure to use the custom port for SSH keyscan
 
-          # SSH into the VPS and perform the deployment steps
-          echo "Connecting to VPS and deploying..."
-          ssh -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST << 'EOF'
-            echo "Checking if the repository directory exists on the VPS..."
+          # Print the VPS host and custom port for debugging purposes
+          echo "VPS_HOST is: $VPS_HOST"
+          echo "Using custom SSH port: $VPS_PORT"
+
+          # SSH into the VPS and deploy
+          ssh -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "
             # Check if the repo directory exists, otherwise clone it
             if [ ! -d '/home/$VPS_USER/Geopolitics' ]; then
-              echo "Cloning repository from GitHub..."
-              git clone git@github.com:AlexRuedaPayen/Geopolitics.git /home/$VPS_USER/Geopolitics 
+              git clone git@github.com:username/Geopolitics.git /home/$VPS_USER/Geopolitics  # Adjust repository URL
             else
-              echo "Repository already exists, pulling latest changes..."
-              cd /home/$VPS_USER/Geopolitics && git pull origin main
+              cd /home/$VPS_USER/Geopolitics && git pull origin main  # Pull latest changes if repo exists
             fi
 
-            echo "Setting up the environment..."
             # Set up the environment and restart the service
             cd /home/$VPS_USER/Geopolitics
-            python3 setup_environment.py
-            
-            echo "Restarting the service..."
-            sudo systemctl restart geopolitics-dashboard.service
-          EOF
-          echo "Deployment process finished."
+            python3 setup_environment.py  # Set up the environment (adjust if needed)
+            sudo systemctl restart geopolitics-dashboard.service  # Restart your service after the update
+          "
