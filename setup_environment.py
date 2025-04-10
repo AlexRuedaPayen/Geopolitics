@@ -25,10 +25,6 @@ def create_virtualenv():
     else:
         print("Virtual environment already exists.")
 
-    # Ensure pip is installed and up-to-date
-    pip_executable = get_pip_executable()
-    subprocess.check_call([sys.executable, pip_executable, "install", "--upgrade", "pip"])
-
 def install_dependencies():
     """Install dependencies and set up the project in editable mode."""
     pip_executable = get_pip_executable()
