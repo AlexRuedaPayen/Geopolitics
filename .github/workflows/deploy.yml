@@ -36,7 +36,15 @@ jobs:
           VPS_PORT: ${{ secrets.VPS_PORT }} 
         
 
-
+      - name: Test SSH Connection to VPS
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          # Test SSH connection to the VPS using the provided user, host, and port
+          echo "Testing SSH connection to $VPS_HOST on port $VPS_PORT..."
+          ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "echo 'SSH connection successful'"
 
       - name: Deploy to Server
         env:
