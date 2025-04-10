@@ -21,20 +21,47 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
-            mkdir -p ~/.ssh
-            echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/github_deploy_key
-            chmod 600 ~/.ssh/github_deploy_key
+            mname: Deploy to VPS
 
-            echo "Host github.com
-                IdentityFile ~/.ssh/github_deploy_key
-                StrictHostKeyChecking no" >> ~/.ssh/config
-            chmod 600 ~/.ssh/config
+on:
+  push:
+    branches:
+      - main
 
+jobs:
+  deploy:
+    runs-on: ubuntu-latest  # GitHub Actions runner
+
+    steps:
+      # Step 1: Checkout code (on GitHub Actions runner)
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Deploy to VPS via SSH (this step is executed on the GitHub Actions runner)
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}  # VPS hostname or IP
+          username: ${{ secrets.VPS_USER }}  # VPS username
+          key: ${{ secrets.VPS_SSH_KEY }}  # Private key (used to authenticate to the VPS)
+          port: ${{ secrets.VPS_PORT }}  # VPS SSH port
+          script: |
+            # --------------------------
+            # This section will run **on the VPS**, not on GitHub Actions runner
+            # --------------------------
+
+            # 1. Check if the 'Geopolitics' directory exists on the VPS
             if [ ! -d "/home/${{ secrets.VPS_USER }}/Geopolitics" ]; then
-                git clone git@github.com:AlexRuedaPayen/Geopolitics.git /home/${{ secrets.VPS_USER }}/Geopolitics
+                # If the directory does not exist, clone the repo from GitHub
+                git clone git@github.com:your_username/Geopolitics.git /home/${{ secrets.VPS_USER }}/Geopolitics
             else
+                # If the directory exists, pull the latest changes from GitHub
                 cd /home/${{ secrets.VPS_USER }}/Geopolitics && git pull
             fi
 
-            /usr/bin/python3 /home/${{ secrets.VPS_USER }}/Geopolitics/setup_environment.py
+            # 2. Run the setup environment script to set up the Python environment
+            /home/${{ secrets.VPS_USER }}/Geopolitics/venv/bin/python /home/${{ secrets.VPS_USER }}/Geopolitics/setup_environment.py
+
+            # 3. Restart the systemd service for the project
             sudo systemctl restart geopolitics-dashboard.service
+
