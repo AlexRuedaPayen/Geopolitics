@@ -46,6 +46,21 @@ jobs:
           echo "Testing SSH connection to $VPS_HOST on port $VPS_PORT..."
           ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "echo 'SSH connection successful'"
 
+      - name: Set up SSH key for GitHub access
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          # Set up the SSH private key
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          # Add GitHub to known hosts to prevent SSH warnings
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+            
+
       - name: Test SSH Connection and Deploy
         env:
           VPS_USER: ${{ secrets.VPS_USER }}
