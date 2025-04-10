@@ -18,6 +18,14 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}  # Ensure this secret contains the SSH private key for your VPS
 
+      - name: Debug SSH Port Connectivity
+        run: |
+          echo "Testing SSH connectivity to $VPS_HOST on port $VPS_PORT..."
+          nc -zv $VPS_HOST $VPS_PORT
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}    
+            
       - name: Deploy to Server
         env:
           VPS_USER: ${{ secrets.VPS_USER }}       # The SSH username for your VPS
@@ -34,7 +42,7 @@ jobs:
           ssh -p $VPS_PORT $VPS_USER@$VPS_HOST "
             # Check if the repo directory exists, otherwise clone it
             if [ ! -d '/home/$VPS_USER/Geopolitics' ]; then
-              git clone git@github.com:username/Geopolitics.git /home/$VPS_USER/Geopolitics  # Adjust repository URL
+              git clone git@github.com:AlexRuedaPayen/Geopolitics.git /home/$VPS_USER/Geopolitics  # Adjust repository URL
             else
               cd /home/$VPS_USER/Geopolitics && git pull origin main  # Pull latest changes if repo exists
             fi
