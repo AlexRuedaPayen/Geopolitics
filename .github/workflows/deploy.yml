@@ -24,9 +24,6 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}       # The public IP address or hostname of your VPS
           VPS_PORT: ${{ secrets.VPS_PORT }}       # The custom SSH port you're using for your VPS
         run: |
-          # Print the VPS host and custom port for debugging purposes
-          echo "VPS_HOST is: $VPS_HOST"
-          echo "Using custom SSH port: $VPS_PORT"
 
           # Add the VPS host key to known hosts to avoid "Host key verification failed" errors
           mkdir -p ~/.ssh
@@ -34,7 +31,7 @@ jobs:
 
 
           # SSH into the VPS and deploy
-          ssh -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "
+          ssh -p $VPS_PORT $VPS_USER@$VPS_HOST "
             # Check if the repo directory exists, otherwise clone it
             if [ ! -d '/home/$VPS_USER/Geopolitics' ]; then
               git clone git@github.com:username/Geopolitics.git /home/$VPS_USER/Geopolitics  # Adjust repository URL
