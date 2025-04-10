@@ -80,3 +80,9 @@ jobs:
           cd /home/$VPS_USER/Geopolitics
           python3 setup_environment.py 
           "
+      - name: Deploy Dash App
+        run: |
+          ssh -i your_private_key $VPS_USER@$VPS_HOST "
+           cd  /home/$VPS_USER/Geopolitics &&
+            nohup venv/bin/python dash_app.py &
+          "
