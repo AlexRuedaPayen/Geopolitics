@@ -22,6 +22,10 @@ def create_virtualenv():
     if not os.path.exists("venv"):
         print("Creating virtual environment...")
         subprocess.check_call([sys.executable, "-m", "venv", "venv"])
+
+        # Ensure pip is installed in the virtual environment
+        pip_executable = get_pip_executable()
+        subprocess.check_call([sys.executable, pip_executable, "install", "--upgrade", "pip"])
     else:
         print("Virtual environment already exists.")
 
