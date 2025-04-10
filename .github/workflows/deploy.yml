@@ -55,4 +55,3 @@ jobs:
             # Restart the service
             sudo systemctl restart geopolitics-dashboard.service
             EOF
-  shell: /usr/bin/bash -e {0}
