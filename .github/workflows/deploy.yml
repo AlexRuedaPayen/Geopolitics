@@ -30,7 +30,7 @@ jobs:
             # 1. Check if the 'Geopolitics' directory exists on the VPS
             if [ ! -d "/home/${{ secrets.VPS_USER }}/Geopolitics" ]; then
                 # If the directory does not exist, clone the repo from GitHub
-                git clone git@github.com:your_username/Geopolitics.git /home/${{ secrets.VPS_USER }}/Geopolitics
+                git clone git@github.com:AlexRuedaPayen/Geopolitics.git /home/${{ secrets.VPS_USER }}/Geopolitics
             else
                 # If the directory exists, pull the latest changes from GitHub
                 cd /home/${{ secrets.VPS_USER }}/Geopolitics && git pull
