@@ -22,7 +22,7 @@ jobs:
                 port: ${{ secrets.VPS_PORT }}
                 script: |
                     if [ ! -d "/home/${{ secrets.VPS_USER }}/Geopolitics" ]; then
-                        git clone git@github.com:your_username/Geopolitics.git /home/${{ secrets.VPS_USER }}/Geopolitics
+                        git clone git@github.com:AlexRuedaPayen/Geopolitics.git /home/${{ secrets.VPS_USER }}/Geopolitics
                     else
                         cd /home/${{ secrets.VPS_USER }}/Geopolitics && git pull
                     fi
