@@ -21,9 +21,16 @@ jobs:
                 key: ${{ secrets.VPS_SSH_KEY  }}
                 port: ${{ secrets.VPS_PORT }}
                 script: |
-                    if [ ! -d "/home/your_user/Geopolitics" ]; then
-                        git clone git@github.com:your_username/Geopolitics.git /home/your_user/Geopolitics
+                    if [ ! -d "/home/${{ secrets.VPS_USER }}/Geopolitics" ]; then
+                        git clone git@github.com:your_username/Geopolitics.git /home/${{ secrets.VPS_USER }}/Geopolitics
                     else
-                        cd /home/your_user/Geopolitics && git pull
+                        cd /home/${{ secrets.VPS_USER }}/Geopolitics && git pull
                     fi
                                         
+                    cd /home/${{ secrets.VPS_USER }}/Geopolitics
+
+                    # Set up virtual environment and dependencies
+                    python3 setup_environment.py
+
+                    # Restart the systemd service
+                    systemctl restart geopolitics-dashboard.service
