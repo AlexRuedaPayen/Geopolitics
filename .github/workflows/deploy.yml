@@ -27,10 +27,10 @@ jobs:
                         cd /home/${{ secrets.VPS_USER }}/Geopolitics && git pull
                     fi
                                         
-                    cd /home/${{ secrets.VPS_USER }}/Geopolitics
+                    #cd /home/${{ secrets.VPS_USER }}/Geopolitics
 
                     # Set up virtual environment and dependencies
-                    python3 setup_environment.py
+                    #python3 setup_environment.py
 
                     # Restart the systemd service
-                    systemctl restart geopolitics-dashboard.service
+                    #systemctl restart geopolitics-dashboard.service
