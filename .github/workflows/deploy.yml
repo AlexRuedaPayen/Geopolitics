@@ -3,7 +3,7 @@ name: Deploy to VPS
 on:
   push:
     branches:
-      - main
+      - main  # Change to your main branch
 
 jobs:
   deploy:
@@ -12,46 +12,33 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        
+      - name: Add SSH private key to agent
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY  }}  # Ensure this secret contains the new private key
 
-      - name: Set up SSH keys
+      - name: Deploy to Server
         env:
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_USER: ${{ secrets.VPS_USER }}
-        run: |
-            # Set up SSH keys and configure for GitHub access on VPS
-            mkdir -p ~/.ssh
-            echo "$VPS_SSH_KEY" > ~/.ssh/github_deploy_key
-            chmod 600 ~/.ssh/github_deploy_key
-
-            # Set up SSH config
-            echo "Host github.com
-                    IdentityFile ~/.ssh/github_deploy_key
-                    StrictHostKeyChecking no" >> ~/.ssh/config
-            chmod 600 ~/.ssh/config
-
-      - name: Deploy over SSH to VPS
-        env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
         run: |
-            # Add VPS host key to known_hosts to avoid "Host key verification failed"
-            mkdir -p ~/.ssh
-            ssh-keyscan -H $VPS_HOST >> ~/.ssh/known_hosts
-            
-            # SSH into VPS and deploy
-            ssh -p $VPS_PORT $VPS_USER@$VPS_HOST << 'EOF'
-            # Ensure the directory exists, otherwise clone the repo
-            if [ ! -d "/home/$VPS_USER/Geopolitics" ]; then
-                git clone git@github.com:AlexRuedaPayen/Geopolitics.git /home/$VPS_USER/Geopolitics
+          # Add the VPS host key to known hosts to avoid verification failure
+          mkdir -p ~/.ssh
+          ssh-keyscan -H $VPS_HOST >> ~/.ssh/known_hosts
+
+          # SSH into the VPS and deploy
+          ssh -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "
+            # Check if the repo directory exists, otherwise clone it
+            if [ ! -d '/home/$VPS_USER/Geopolitics' ]; then
+              git clone git@github.com:yourgithubuser/yourgithubrepo.git /home/$VPS_USER/Geopolitics
             else
-                cd /home/$VPS_USER/Geopolitics && git pull
+              cd /home/$VPS_USER/Geopolitics && git pull origin main
             fi
 
-            # Set up virtual environment and dependencies
+            # Set up the environment and restart the service
             cd /home/$VPS_USER/Geopolitics
             python3 setup_environment.py
-
-            # Restart the service
             sudo systemctl restart geopolitics-dashboard.service
-            EOF
+          "
