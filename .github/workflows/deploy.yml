@@ -1,85 +1,70 @@
-name: Deploy to VPS
+name: Deploy Dash App to VPS
 
 on:
   push:
     branches:
-      - main  # Change to your main branch
+      - main  # Trigger deployment when pushing to main branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # Define all environment variables here for better management
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_PORT: ${{ secrets.VPS_PORT }}
+      REPO_PATH: /home/${{ secrets.VPS_USER }}/Geopolitics
+      DASH_APP_PATH: /home/${{ secrets.VPS_USER }}/Geopolitics/dash_app.py
+      SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        
-      - name: Add SSH private key to agent
+
+      - name: Add SSH private key to the agent
         uses: webfactory/ssh-agent@v0.5.3
         with:
-          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}  # Ensure this secret contains the SSH private key for your VPS
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
-      - name: Debug SSH Port Connectivity
-        run: |
-          echo "Testing SSH connectivity to $VPS_HOST on port $VPS_PORT..."
-          nc -zv $VPS_HOST $VPS_PORT
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}    
-            
       - name: Test SSH Connectivity
         run: |
           echo "Testing SSH connection to $VPS_HOST on port $VPS_PORT..."
           ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "echo 'SSH connection successful'"
-        env:
-          VPS_USER: ${{ secrets.VPS_USER }}       # The SSH username for your VPS
-          VPS_HOST: ${{ secrets.VPS_HOST }}       # The public IP address or hostname of your VPS
-          VPS_PORT: ${{ secrets.VPS_PORT }} 
 
-      - name: Set up SSH key for GitHub access
-        env:
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
+      - name: Clone or Pull Latest Code on VPS
         run: |
-          # Set up the SSH private key
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-
-          # Add GitHub to known hosts to prevent SSH warnings
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-          
-      - name: Test SSH Connection and Deploy
-        env:
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
-        run: |
-          echo "Testing SSH connection and running deployment tasks..."
-            
           ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "
+            if [ ! -d '$REPO_PATH' ]; then
+              git clone git@github.com:AlexRuedaPayen/Geopolitics.git $REPO_PATH
+            else
+              cd $REPO_PATH && git pull origin main
+            fi
+          "
 
-          if [ ! -d '/home/$VPS_USER/Geopolitics' ]; then
-            git clone git@github.com:AlexRuedaPayen/Geopolitics.git /home/$VPS_USER/Geopolitics
-          else
-            cd /home/$VPS_USER/Geopolitics && git pull origin main
-          fi
-          
-          cd /home/$VPS_USER/Geopolitics
-          python3 setup_environment.py 
+      - name: Setup Environment on VPS
+        run: |
+          ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "
+            cd $REPO_PATH
+            python3 setup_environment.py
+          "
+
+      - name: Kill Existing Dash App Instances (if any)
+        run: |
+          ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "
+            # Find and kill any running Dash app processes
+            pids=\$(ps aux | grep '[d]ash_app.py' | awk '{print \$2}')
+            if [ ! -z \"\$pids\" ]; then
+              echo 'Killing existing Dash app instances...'
+              kill \$pids
+            else
+              echo 'No existing Dash app instances found.'
+            fi
           "
 
       - name: Deploy Dash App with Screen
-        env:
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
         run: |
-          echo "Deploying Dash app using screen..."
-          
           ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "
-            # Check if a screen session named 'dash_app' is already running, and kill it if so
-            screen -S dash_app -X quit
-            # Start a new screen session and run the app in the background
-            screen -dmS dash_app /home/$VPS_USER/Geopolitics/venv/bin/python3 /home/$VPS_USER/Geopolitics/dash_app.py
+            # Start the Dash app using screen in detached mode
+            screen -dmS dash_app /home/$VPS_USER/Geopolitics/venv/bin/python3 $DASH_APP_PATH
+            echo 'Dash app started in background with screen.'
           "
