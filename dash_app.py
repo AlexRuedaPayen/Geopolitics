@@ -4,8 +4,8 @@ from dash import dcc, html, dash_table, Input, Output, State
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import plotly.graph_objects as go
 import pycountry
+import dash_bootstrap_components as dbc
 
 # ---------------------------
 # 📊 Generate Randomized Data
@@ -21,6 +21,7 @@ country_region_map = {
     "Saudi Arabia": "Middle East", "UAE": "Middle East", "Israel": "Middle East",
     "Brazil": "South America", "Argentina": "South America", "Chile": "South America"
 }
+
 countries = list(country_region_map.keys())
 zones = sorted(set(country_region_map.values()))
 
@@ -29,6 +30,7 @@ sectors = [
     "Healthcare", "Financials", "Information Technology", "Telecommunications", "Utilities", "Real Estate"
 ]
 
+# Generate mock data for companies
 data = pd.DataFrame()
 for sector in sectors:
     num_companies = np.random.randint(30, 60)
@@ -43,40 +45,29 @@ for sector in sectors:
     })
     data = pd.concat([data, sector_data], ignore_index=True)
 
-macro_data = pd.DataFrame({
-    "Country": countries,
-    "Energy Import ($B)": np.random.uniform(10, 300, len(countries)).round(2),
-    "Energy Export ($B)": np.random.uniform(5, 200, len(countries)).round(2),
-    "Sector Import ($B)": np.random.uniform(100, 700, len(countries)).round(2),
-    "Sector Export ($B)": np.random.uniform(80, 800, len(countries)).round(2),
-    "GDP ($B)": np.random.uniform(1000, 25000, len(countries)).round(2),
-    "Inflation (%)": np.random.uniform(1, 8, len(countries)).round(2)
-})
-
 # ---------------------------
 # 🚀 Dash App Setup
 # ---------------------------
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
-app.layout = html.Div([
-    html.H1("📈 Financial Dashboard by Region & Sector", style={'textAlign': 'center'}),
+app.layout = dbc.Container([
 
-    html.Div([
-        html.Div([
-            html.Label("Select Zone:"),
-            dcc.Dropdown(
-                id="zone-dropdown",
-                options=[{"label": z, "value": z} for z in zones],
-                value=None,
-                placeholder="Select a world zone...",
-                clearable=False
-            )
-        ], style={"width": "30%", 'display': 'inline-block', 'marginRight': '20px'}),
-    ], style={'marginBottom': '20px'}),
+    # Header section
+    dbc.Row([dbc.Col(html.H1("📈 Financial Dashboard by Region & Sector", style={'textAlign': 'center'}), width=12)], style={"marginBottom": "20px"}),
 
-    html.Div(id="zone-map-container"),
-    html.Div(id="sector-dropdown-container"),
-    html.Div(id="charts-container"),
+    # Dropdown to select zone
+    dbc.Row([dbc.Col(
+        html.Div([html.Label("Select Zone:"), 
+                  dcc.Dropdown(id="zone-dropdown", options=[{"label": z, "value": z} for z in zones], 
+                               value=None, placeholder="Select a world zone...", clearable=False)], 
+        style={"width": "30%", 'display': 'inline-block', 'marginRight': '20px'}), width=4)], justify="start"),
+
+    # Container for map and sector dropdown
+    dbc.Row([dbc.Col(html.Div(id="zone-map-container"), width=12)], style={"marginBottom": "20px"}),
+    dbc.Row([dbc.Col(html.Div(id="sector-dropdown-container"), width=12)], style={"marginBottom": "20px"}),
+
+    # Container for charts
+    dbc.Row([dbc.Col(html.Div(id="charts-container"), width=12)]),
 ])
 
 # ---------------------------
@@ -134,15 +125,10 @@ def show_sector_dropdown(click_data):
     available_sectors = data[data["Country"] == country_name]["Sector"].unique()
     sector_options = [{"label": s, "value": s} for s in sorted(available_sectors)]
 
-    return html.Div([
-        html.Label("Select Sector:"),
-        dcc.Dropdown(
-            id="sector-dropdown",
-            options=sector_options,
-            placeholder="Select a sector...",
-            clearable=False
-        )
-    ], style={"width": "30%", 'display': 'inline-block', 'marginBottom': '20px'})
+    return html.Div([html.Label("Select Sector:"), 
+                     dcc.Dropdown(id="sector-dropdown", options=sector_options, 
+                                  placeholder="Select a sector...", clearable=False)], 
+                    style={"width": "30%", 'display': 'inline-block', 'marginBottom': '20px'})
 
 @app.callback(
     Output("charts-container", "children"),
@@ -162,15 +148,11 @@ def update_dashboard(click_data, selected_sector):
 
     filtered_data = data[(data["Country"] == country_name) & (data["Sector"] == selected_sector)]
 
-    stock_price_fig = px.line(
-        filtered_data, x="Company", y="Stock Price",
-        title=f"Stock Prices in {country_name}", markers=True
-    )
+    stock_price_fig = px.line(filtered_data, x="Company", y="Stock Price",
+                              title=f"Stock Prices in {country_name}", markers=True)
 
-    market_cap_fig = px.bar(
-        filtered_data, x="Company", y="Market Cap ($B)",
-        title=f"Market Capitalization in {country_name}", text_auto=True
-    )
+    market_cap_fig = px.bar(filtered_data, x="Company", y="Market Cap ($B)",
+                            title=f"Market Capitalization in {country_name}", text_auto=True)
 
     print(f"📊 Dashboard updated in {time.time() - start:.2f} sec")
 
@@ -191,10 +173,9 @@ def update_dashboard(click_data, selected_sector):
             style_header={'fontWeight': 'bold', 'backgroundColor': '#f4f4f4'}
         ),
 
-        html.Div([
-            html.Button("⬇️ Download Table as CSV", id="download-btn"),
-            dcc.Download(id="download-data")
-        ], style={'textAlign': 'center', 'marginTop': '20px'})
+        html.Div([html.Button("⬇️ Download Table as CSV", id="download-btn"),
+                  dcc.Download(id="download-data")],
+                 style={'textAlign': 'center', 'marginTop': '20px'})
     ])
 
 @app.callback(
@@ -204,6 +185,8 @@ def update_dashboard(click_data, selected_sector):
     State("sector-dropdown", "value"),
     prevent_initial_call=True
 )
+
+
 def download_csv(n_clicks, click_data, sector):
     start = time.time()
     if not click_data or not sector:
