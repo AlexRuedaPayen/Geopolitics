@@ -65,6 +65,6 @@ jobs:
         run: |
           ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "
             # Start the Dash app using screen in detached mode
-            screen -dmS dash_app /home/$VPS_USER/Geopolitics/venv/bin/python3 $DASH_APP_PATH
+            nohup /home/$VPS_USER/Geopolitics/venv/bin/python3 $DASH_APP_PATH > /dev/null 2>&1 &
             echo 'Dash app started in background with screen.'
           "
