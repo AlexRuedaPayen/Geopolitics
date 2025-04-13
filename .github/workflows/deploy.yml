@@ -1,70 +1,78 @@
-name: Deploy Dash App to VPS
+name: Deploy Dash App to VPS (Prod + Staging)
 
 on:
   push:
     branches:
-      - main  # Trigger deployment when pushing to main branch
+      - '**'  # Trigger on push to any branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      # Define all environment variables here for better management
       VPS_USER: ${{ secrets.VPS_USER }}
       VPS_HOST: ${{ secrets.VPS_HOST }}
       VPS_PORT: ${{ secrets.VPS_PORT }}
-      REPO_PATH: /home/${{ secrets.VPS_USER }}/Geopolitics
-      DASH_APP_PATH: /home/${{ secrets.VPS_USER }}/Geopolitics/dash_app.py
       SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+      PROJECT_NAME: Geopolitics
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Add SSH private key to the agent
+      - name: Add SSH private key
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
-      - name: Test SSH Connectivity
+      - name: Deploy to VPS based on branch
         run: |
-          echo "Testing SSH connection to $VPS_HOST on port $VPS_PORT..."
-          ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "echo 'SSH connection successful'"
+          ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST << 'EOF'
+            set -e
 
-      - name: Clone or Pull Latest Code on VPS
-        run: |
-          ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "
-            if [ ! -d '$REPO_PATH' ]; then
-              git clone git@github.com:AlexRuedaPayen/Geopolitics.git $REPO_PATH
+            BRANCH="${{ github.ref_name }}"
+            echo "🚀 Starting deployment for branch: \$BRANCH"
+
+            if [ "\$BRANCH" = "main" ]; then
+              ENV="production"
+              PORT=8050
+              SCREEN_NAME="dash_prod"
+              REPO_PATH="/home/${{ secrets.VPS_USER }}/Geopolitics"
             else
-              cd $REPO_PATH && git pull origin main
+              ENV="staging"
+              PORT=$((RANDOM % 1000 + 8100))  # optional: random port per branch
+              SCREEN_NAME="dash_\${BRANCH//[^a-zA-Z0-9]/_}"
+              REPO_PATH="/home/${{ secrets.VPS_USER }}/Geopolitics_\${BRANCH//[^a-zA-Z0-9]/_}"
             fi
-          "
 
-      - name: Setup Environment on VPS
-        run: |
-          ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "
-            cd $REPO_PATH
+            echo "🌍 Environment: \$ENV"
+            echo "📁 Repo Path: \$REPO_PATH"
+            echo "🔌 Port: \$PORT"
+
+            # Clone or update
+            if [ ! -d "\$REPO_PATH" ]; then
+              git clone -b "\$BRANCH" git@github.com:AlexRuedaPayen/Geopolitics.git "\$REPO_PATH"
+            else
+              cd "\$REPO_PATH"
+              git fetch origin "\$BRANCH"
+              git checkout "\$BRANCH"
+              git pull origin "\$BRANCH"
+            fi
+
+            # Virtualenv
+            cd "\$REPO_PATH"
             python3 setup_environment.py
-          "
 
-      - name: Kill Existing Dash App Instances (if any)
-        run: |
-          ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "
-            # Find and kill any running Dash app processes
-            pids=\$(ps aux | grep '[d]ash_app.py' | awk '{print \$2}')
-            if [ ! -z \"\$pids\" ]; then
-              echo 'Killing existing Dash app instances...'
-              kill \$pids
-            else
-              echo 'No existing Dash app instances found.'
-            fi
-          "
+            # Kill existing process
+            screen -S "\$SCREEN_NAME" -X quit || true
 
-      - name: Deploy Dash App with Screen
-        run: |
-          ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST "
-            # Start the Dash app using screen in detached mode
-            nohup /home/$VPS_USER/Geopolitics/venv/bin/python3 $DASH_APP_PATH > /dev/null 2>&1 &
-            echo 'Dash app started in background with screen.'
-          "
+            # Start new instance
+            screen -dmS "\$SCREEN_NAME" bash -c "
+              cd '\$REPO_PATH'
+              source venv/bin/activate
+              export APP_ENV=\$ENV
+              export DASH_PORT=\$PORT
+              venv/bin/python3 dash_app.py
+            "
+
+            echo "✅ Deployed branch \$BRANCH on port \$PORT in \$ENV mode."
+          EOF
