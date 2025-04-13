@@ -26,53 +26,55 @@ jobs:
 
       - name: Deploy to VPS based on branch
         run: |
-          ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST << 'EOF'
+          BRANCH="${GITHUB_REF##*/}"
+          echo "🚀 Starting deployment for branch: $BRANCH"
+
+          if [ "$BRANCH" = "main" ]; then
+            ENV="production"
+            PORT=8050
+            SCREEN_NAME="dash_prod"
+            REPO_PATH="/home/$VPS_USER/$PROJECT_NAME"
+          else
+            ENV="staging"
+            SAFE_BRANCH_NAME=$(echo "$BRANCH" | sed 's/[^a-zA-Z0-9]/_/g')
+            PORT=$((8100 + RANDOM % 1000))
+            SCREEN_NAME="dash_$SAFE_BRANCH_NAME"
+            REPO_PATH="/home/$VPS_USER/${PROJECT_NAME}_$SAFE_BRANCH_NAME"
+          fi
+
+          echo "🌍 Environment: $ENV"
+          echo "📁 Repo Path: $REPO_PATH"
+          echo "🔌 Port: $PORT"
+
+          ssh -v -o StrictHostKeyChecking=no -p $VPS_PORT $VPS_USER@$VPS_HOST bash << EOF
             set -e
 
-            BRANCH="${{ github.ref_name }}"
-            echo "🚀 Starting deployment for branch: \$BRANCH"
-
-            if [ "\$BRANCH" = "main" ]; then
-              ENV="production"
-              PORT=8050
-              SCREEN_NAME="dash_prod"
-              REPO_PATH="/home/${{ secrets.VPS_USER }}/Geopolitics"
+            echo "🛠 Preparing environment on server..."
+            if [ ! -d "$REPO_PATH" ]; then
+              git clone -b $BRANCH git@github.com:AlexRuedaPayen/$PROJECT_NAME.git "$REPO_PATH"
             else
-              ENV="staging"
-              PORT=$((RANDOM % 1000 + 8100))  # optional: random port per branch
-              SCREEN_NAME="dash_\${BRANCH//[^a-zA-Z0-9]/_}"
-              REPO_PATH="/home/${{ secrets.VPS_USER }}/Geopolitics_\${BRANCH//[^a-zA-Z0-9]/_}"
+              cd "$REPO_PATH"
+              git fetch origin "$BRANCH"
+              git checkout "$BRANCH"
+              git pull origin "$BRANCH"
             fi
 
-            echo "🌍 Environment: \$ENV"
-            echo "📁 Repo Path: \$REPO_PATH"
-            echo "🔌 Port: \$PORT"
+            cd "$REPO_PATH"
 
-            # Clone or update
-            if [ ! -d "\$REPO_PATH" ]; then
-              git clone -b $BRANCH git@github.com:AlexRuedaPayen/Geopolitics.git $REPO_PATH
-            else
-              cd "\$REPO_PATH"
-              git fetch origin "\$BRANCH"
-              git checkout "\$BRANCH"
-              git pull origin "\$BRANCH"
-            fi
-
-            # Virtualenv
-            cd "\$REPO_PATH"
+            echo "🐍 Setting up virtual environment..."
             python3 setup_environment.py
 
-            # Kill existing process
-            screen -S "\$SCREEN_NAME" -X quit || true
+            echo "🛑 Killing existing app screen (if running)..."
+            screen -S "$SCREEN_NAME" -X quit || true
 
-            # Start new instance
-            screen -dmS "\$SCREEN_NAME" bash -c "
-              cd '\$REPO_PATH'
+            echo "🚀 Starting Dash app in new screen session..."
+            screen -dmS "$SCREEN_NAME" bash -c '
+              cd "$REPO_PATH"
               source venv/bin/activate
-              export APP_ENV=\$ENV
-              export DASH_PORT=\$PORT
-              venv/bin/python3 dash_app.py
-            "
+              export APP_ENV=$ENV
+              export DASH_PORT=$PORT
+              python3 dash_app.py
+            '
 
-            echo "✅ Deployed branch \$BRANCH on port \$PORT in \$ENV mode."
-          EOF
+            echo "✅ Deployment complete for branch $BRANCH on port $PORT in $ENV mode."
+EOF
