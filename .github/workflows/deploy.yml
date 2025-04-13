@@ -50,7 +50,7 @@ jobs:
 
             # Clone or update
             if [ ! -d "\$REPO_PATH" ]; then
-              git clone -b "\$BRANCH" git@github.com:AlexRuedaPayen/Geopolitics.git "\$REPO_PATH"
+              git clone -b $BRANCH git@github.com:AlexRuedaPayen/Geopolitics.git $REPO_PATH
             else
               cd "\$REPO_PATH"
               git fetch origin "\$BRANCH"
